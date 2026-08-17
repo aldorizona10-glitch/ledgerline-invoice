@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledgerline — Invoice Studio</title>
+<meta name="description" content="Privacy-first invoice generator. Templates, saved clients, a pay button, and PDF export — all in your browser. Nothing is uploaded.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+</head>
+<body>
+<style>
+  :root{
+    --bg:#FBFCFB; --surface:#FFFFFF; --panel:#F3F6F4;
+    --ink:#16201C; --muted:#5C6B64; --faint:#8A988F;
+    --line:#E2E7E4; --line-strong:#CDD6D1;
+    --accent:#0B6B53; --accent-ink:#FFFFFF;
+    --accent-weak:color-mix(in srgb,var(--accent) 12%,var(--surface));
+    --shadow:0 1px 2px rgba(16,32,26,.04),0 8px 30px rgba(16,32,26,.07);
+    --radius:14px; --radius-sm:9px;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0E1512; --surface:#141D19; --panel:#111917;
+      --ink:#E8EEEA; --muted:#93A69D; --faint:#6C7E75;
+      --line:#223029; --line-strong:#2E3F37;
+      --accent:#3BA585; --accent-ink:#07110D;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#FBFCFB; --surface:#FFFFFF; --panel:#F3F6F4;
+    --ink:#16201C; --muted:#5C6B64; --faint:#8A988F;
+    --line:#E2E7E4; --line-strong:#CDD6D1;
+    --accent:#0B6B53; --accent-ink:#FFFFFF;
+    --shadow:0 1px 2px rgba(16,32,26,.04),0 8px 30px rgba(16,32,26,.07);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1512; --surface:#141D19; --panel:#111917;
+    --ink:#E8EEEA; --muted:#93A69D; --faint:#6C7E75;
+    --line:#223029; --line-strong:#2E3F37;
+    --accent:#3BA585; --accent-ink:#07110D;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 34px rgba(0,0,0,.4);
+  }
+  /* accent themes (light value + dark value) */
+  :root[data-accent="indigo"],:root[data-theme="light"][data-accent="indigo"]{--accent:#4F46E5}
+  @media(prefers-color-scheme:dark){:root[data-accent="indigo"]{--accent:#8E88F2}}
+  :root[data-theme="dark"][data-accent="indigo"]{--accent:#8E88F2}
+  :root[data-accent="slate"],:root[data-theme="light"][data-accent="slate"]{--accent:#3F4E63}
+  @media(prefers-color-scheme:dark){:root[data-accent="slate"]{--accent:#9BB0C9}}
+  :root[data-theme="dark"][data-accent="slate"]{--accent:#9BB0C9}
+  :root[data-accent="crimson"],:root[data-theme="light"][data-accent="crimson"]{--accent:#B4232F}
+  @media(prefers-color-scheme:dark){:root[data-accent="crimson"]{--accent:#F0808A}}
+  :root[data-theme="dark"][data-accent="crimson"]{--accent:#F0808A}
+  :root[data-accent="amber"],:root[data-theme="light"][data-accent="amber"]{--accent:#B45309}
+  @media(prefers-color-scheme:dark){:root[data-accent="amber"]{--accent:#E7A54B}}
+  :root[data-theme="dark"][data-accent="amber"]{--accent:#E7A54B}
+
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.01em}
+  input,select,textarea,button{font-family:inherit;font-size:inherit;color:inherit}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:600}
+
+  .app{min-height:100vh;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;
+    padding:12px 20px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+  .mark{width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--accent-ink);
+    display:grid;place-items:center;font-weight:800;font-size:15px}
+  .brand b{font-size:15px;letter-spacing:-.02em}
+  .brand span{color:var(--faint);font-size:12px}
+  .tools{display:flex;gap:8px;flex-wrap:wrap}
+  button{cursor:pointer;border:1px solid var(--line-strong);background:var(--surface);
+    color:var(--ink);padding:8px 13px;border-radius:var(--radius-sm);font-weight:600;font-size:13px;
+    transition:border-color .15s,background .15s,transform .05s}
+  button:hover{border-color:var(--accent)}
+  button:active{transform:translateY(1px)}
+  button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  button.primary:hover{filter:brightness(1.07)}
+  button.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:8px 10px}
+  button.ghost:hover{color:var(--ink);border-color:var(--line)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+  .layout{flex:1;display:grid;grid-template-columns:minmax(340px,430px) 1fr;gap:0;align-items:start}
+  @media (max-width:900px){.layout{grid-template-columns:1fr}}
+
+  .editor{border-right:1px solid var(--line);padding:22px 20px 60px;
+    height:calc(100vh - 51px);overflow-y:auto;position:sticky;top:51px}
+  @media (max-width:900px){.editor{height:auto;position:static;border-right:none;border-bottom:1px solid var(--line)}}
+  fieldset{border:none;margin:0 0 26px;padding:0;display:flex;flex-direction:column;gap:10px}
+  legend{padding:0;margin-bottom:4px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  label.lab{font-size:12px;font-weight:600;color:var(--muted)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  input[type=text],input[type=url],input[type=date],input[type=number],select,textarea{
+    background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius-sm);
+    padding:9px 11px;width:100%;transition:border-color .15s}
+  input:hover,select:hover,textarea:hover{border-color:var(--faint)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-weak)}
+  textarea{resize:vertical;min-height:66px}
+  .hint{font-size:11.5px;color:var(--faint)}
+  .inline{display:flex;gap:8px;align-items:center}
+  .inline select{flex:1}
+  .mini{padding:8px 11px;font-size:12.5px}
+
+  .items{display:flex;flex-direction:column;gap:8px}
+  .item{display:grid;grid-template-columns:1fr 62px 92px 30px;gap:8px;align-items:center}
+  .item input{padding:8px 9px}
+  .item .del{border:none;background:transparent;color:var(--faint);padding:4px;font-size:17px;line-height:1}
+  .item .del:hover{color:#c0392b}
+  .item-head{display:grid;grid-template-columns:1fr 62px 92px 30px;gap:8px;
+    font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:0 2px}
+  .add{align-self:flex-start;margin-top:2px}
+  .logo-drop{display:flex;align-items:center;gap:12px}
+  .logo-prev{width:52px;height:52px;border-radius:9px;border:1px dashed var(--line-strong);
+    display:grid;place-items:center;overflow:hidden;background:var(--panel);color:var(--faint);font-size:11px}
+  .logo-prev img{width:100%;height:100%;object-fit:contain}
+  .swatches{display:flex;gap:9px;flex-wrap:wrap}
+  .sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--line-strong);cursor:pointer;padding:0}
+  .sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
+  .sw:hover{transform:scale(1.08)}
+
+  .stage{padding:34px 30px 60px;display:flex;justify-content:center}
+  @media (max-width:900px){.stage{padding:22px 14px 50px}}
+  .paper{width:100%;max-width:760px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);padding:48px 52px;
+    display:flex;flex-direction:column;gap:30px}
+  @media (max-width:560px){.paper{padding:30px 24px}}
+  .inv-top{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
+  .inv-from{display:flex;flex-direction:column;gap:8px;max-width:60%}
+  .inv-logo{max-height:56px;max-width:220px;object-fit:contain}
+  .inv-fromname{font-weight:700;font-size:18px}
+  .inv-lines{color:var(--muted);font-size:13.5px;white-space:pre-line}
+  .inv-title{text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+  .inv-title h1{font-size:34px;letter-spacing:-.03em;font-weight:800;line-height:1;text-transform:capitalize}
+  .inv-meta{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+  .inv-meta b{color:var(--ink);font-weight:600}
+  .parties{display:flex;gap:40px;flex-wrap:wrap}
+  .party{display:flex;flex-direction:column;gap:5px;min-width:200px}
+  .party .who{font-size:14.5px;white-space:pre-line}
+  .party .who strong{font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--faint);font-weight:600;padding:0 0 10px;border-bottom:1.5px solid var(--line-strong)}
+  th.r,td.r{text-align:right}
+  tbody td{padding:12px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody td.desc{padding-right:16px}
+  .totals{display:flex;justify-content:flex-end}
+  .totals-box{width:min(320px,100%);display:flex;flex-direction:column;gap:9px}
+  .trow{display:flex;justify-content:space-between;font-size:13.5px;color:var(--muted)}
+  .trow b{color:var(--ink);font-weight:600}
+  .grand{border-top:1.5px solid var(--line-strong);padding-top:12px;margin-top:3px;
+    display:flex;justify-content:space-between;align-items:baseline}
+  .grand .lab{font-weight:700;font-size:14px}
+  .grand .amt{font-weight:800;font-size:22px;color:var(--accent)}
+  .paywrap{display:flex;justify-content:flex-end}
+  .paybtn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);
+    text-decoration:none;font-weight:700;font-size:13.5px;padding:11px 18px;border-radius:10px}
+  .paybtn:hover{filter:brightness(1.07)}
+  .notes{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:6px}
+  .notes .body{font-size:13px;color:var(--muted);white-space:pre-line}
+  .paidtag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--accent);border:1.5px solid var(--accent);border-radius:6px;padding:3px 9px}
+  .empty-hint{color:var(--faint);font-size:13px;font-style:italic}
+
+  .privacy{max-width:760px;margin:16px auto 0;color:var(--faint);font-size:12px;text-align:center;
+    display:flex;gap:6px;align-items:center;justify-content:center}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .saved{font-size:12px;color:var(--faint);align-self:center;margin-right:4px}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media print{
+    @page{margin:14mm}
+    .topbar,.editor,.privacy,.no-print{display:none!important}
+    body{background:#fff;color:#000}
+    .stage{padding:0;display:block}
+    .paper{box-shadow:none;border:none;border-radius:0;max-width:none;width:100%;padding:0}
+    .grand .amt{color:#000}
+    .paidtag{color:#000;border-color:#000}
+    .paybtn{background:#fff;color:#000;border:1.5px solid #000}
+  }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">L</div>
+      <div><b>Ledgerline</b> <span>· invoice studio</span></div>
+    </div>
+    <span class="saved" id="savedTag"></span>
+    <div class="tools">
+      <button class="ghost" id="themeBtn" title="Toggle light / dark">◐ Theme</button>
+      <button class="ghost" id="dupBtn" title="Duplicate as next invoice">Duplicate</button>
+      <button class="ghost" id="newBtn" title="Start a blank invoice">New</button>
+      <button class="ghost" id="exportBtn" title="Download data as JSON">Export</button>
+      <button class="ghost" id="importBtn" title="Load data from JSON">Import</button>
+      <button class="primary" id="printBtn" title="Print or save as PDF">Download PDF</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="editor" aria-label="Invoice editor">
+      <fieldset>
+        <legend class="eyebrow">Your business</legend>
+        <div class="logo-drop">
+          <div class="logo-prev" id="logoPrev">Logo</div>
+          <div class="field" style="flex:1">
+            <label class="lab" for="logoInput">Logo (optional)</label>
+            <input type="file" id="logoInput" accept="image/*">
+            <span class="hint">Stays in your browser — never uploaded.</span>
+          </div>
+        </div>
+        <div class="field"><label class="lab" for="fromName">Business name</label>
+          <input type="text" id="fromName" data-k="fromName"></div>
+        <div class="field"><label class="lab" for="fromInfo">Address / email / phone</label>
+          <textarea id="fromInfo" data-k="fromInfo"></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="eyebrow">Bill to</legend>
+        <div class="field">
+          <label class="lab" for="clientSel">Saved clients</label>
+          <div class="inline">
+            <select id="clientSel"><option value="">— none —</option></select>
+            <button class="mini" id="clientSave" title="Save current client">Save</button>
+            <button class="mini" id="clientDel" title="Delete selected client">Del</button>
+          </div>
+          <span class="hint">Saved locally on this device only.</span>
+        </div>
+        <div class="field"><label class="lab" for="toName">Client name</label>
+          <input type="text" id="toName" data-k="toName"></div>
+        <div class="field"><label class="lab" for="toInfo">Client address / email</label>
+          <textarea id="toInfo" data-k="toInfo"></textarea></div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="eyebrow">Document</legend>
+        <div class="row">
+          <div class="field"><label class="lab" for="docType">Type</label>
+            <select id="docType" data-k="docType">
+              <option value="Invoice">Invoice</option><option value="Quote">Quote</option>
+              <option value="Estimate">Estimate</option><option value="Receipt">Receipt</option>
+            </select></div>
+          <div class="field"><label class="lab" for="invNo">Reference #</label>
+            <input type="text" id="invNo" data-k="invNo"></div>
+        </div>
+        <div class="row-3">
+          <div class="field"><label class="lab" for="currency">Currency</label>
+            <select id="currency" data-k="currency">
+              <option value="USD">$ USD</option><option value="EUR">€ EUR</option>
+              <option value="GBP">£ GBP</option><option value="IDR">Rp IDR</option>
+              <option value="JPY">¥ JPY</option><option value="AUD">$ AUD</option>
+              <option value="CAD">$ CAD</option><option value="INR">₹ INR</option>
+              <option value="SGD">$ SGD</option><option value="BRL">R$ BRL</option>
+            </select></div>
+          <div class="field"><label class="lab" for="issueDate">Issued</label>
+            <input type="date" id="issueDate" data-k="issueDate"></div>
+          <div class="field"><label class="lab" for="dueDate">Due</label>
+            <input type="date" id="dueDate" data-k="dueDate"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="eyebrow">Line items</legend>
+        <div class="item-head"><span>Description</span><span>Qty</span><span>Rate</span><span></span></div>
+        <div class="items" id="itemsBox"></div>
+        <button class="add" id="addItem">+ Add line</button>
+      </fieldset>
+
+      <fieldset>
+        <legend class="eyebrow">Adjustments</legend>
+        <div class="row-3">
+          <div class="field"><label class="lab" for="discount">Discount %</label>
+            <input type="number" id="discount" data-k="discount" min="0" step="0.01"></div>
+          <div class="field"><label class="lab" for="tax">Tax %</label>
+            <input type="number" id="tax" data-k="tax" min="0" step="0.01"></div>
+          <div class="field"><label class="lab" for="markPaid">Status</label>
+            <select id="markPaid" data-k="paid"><option value="">Unpaid</option><option value="1">Paid</option></select></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="eyebrow">Payment button (optional)</legend>
+        <div class="field"><label class="lab" for="payLink">Payment link</label>
+          <input type="url" id="payLink" data-k="payLink" placeholder="Stripe / PayPal.me / bank link">
+          <span class="hint">Paste any payment URL — it becomes a clickable button on the invoice.</span></div>
+        <div class="field"><label class="lab" for="payLabel">Button label</label>
+          <input type="text" id="payLabel" data-k="payLabel" placeholder="Pay this invoice"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="eyebrow">Accent</legend>
+        <div class="swatches" id="swatches">
+          <button class="sw" data-accent="" style="background:#0B6B53" title="Ledger green" aria-label="Ledger green"></button>
+          <button class="sw" data-accent="indigo" style="background:#4F46E5" title="Indigo" aria-label="Indigo"></button>
+          <button class="sw" data-accent="slate" style="background:#3F4E63" title="Slate" aria-label="Slate"></button>
+          <button class="sw" data-accent="crimson" style="background:#B4232F" title="Crimson" aria-label="Crimson"></button>
+          <button class="sw" data-accent="amber" style="background:#B45309" title="Amber" aria-label="Amber"></button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend class="eyebrow">Notes &amp; terms</legend>
+        <div class="field"><textarea id="notes" data-k="notes" placeholder="Payment terms, bank details, thank-you note…"></textarea></div>
+      </fieldset>
+    </section>
+
+    <section class="stage" aria-label="Invoice preview">
+      <article class="paper" id="paper">
+        <div class="inv-top">
+          <div class="inv-from">
+            <img class="inv-logo" id="pLogo" alt="" hidden>
+            <div class="inv-fromname" id="pFromName"></div>
+            <div class="inv-lines" id="pFromInfo"></div>
+          </div>
+          <div class="inv-title">
+            <h1 id="pTitle">Invoice</h1>
+            <div class="inv-meta">
+              <span><b>No.</b> <span id="pInvNo" class="num"></span></span>
+              <span><b>Issued</b> <span id="pIssue"></span></span>
+              <span id="pDueWrap"><b>Due</b> <span id="pDue"></span></span>
+            </div>
+            <span class="paidtag" id="pPaid" hidden>Paid</span>
+          </div>
+        </div>
+
+        <div class="parties">
+          <div class="party">
+            <span class="eyebrow" id="pBilledLab">Billed to</span>
+            <div class="who" id="pToName"></div>
+            <div class="who" id="pToInfo" style="color:var(--muted);font-size:13px"></div>
+          </div>
+        </div>
+
+        <table>
+          <thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th></tr></thead>
+          <tbody id="pRows"></tbody>
+        </table>
+
+        <div class="totals">
+          <div class="totals-box">
+            <div class="trow"><span>Subtotal</span><b class="num" id="pSub"></b></div>
+            <div class="trow" id="pDiscRow" hidden><span id="pDiscLab">Discount</span><b class="num" id="pDisc"></b></div>
+            <div class="trow" id="pTaxRow" hidden><span id="pTaxLab">Tax</span><b class="num" id="pTax"></b></div>
+            <div class="grand"><span class="lab" id="pTotalLab">Total due</span><span class="amt num" id="pTotal"></span></div>
+          </div>
+        </div>
+
+        <div class="paywrap" id="pPayWrap" hidden>
+          <a class="paybtn" id="pPay" href="#" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+
+        <div class="notes" id="pNotesWrap" hidden>
+          <span class="eyebrow">Notes</span>
+          <div class="body" id="pNotes"></div>
+        </div>
+      </article>
+    </section>
+  </div>
+</div>
+<p class="privacy no-print"><span class="dot"></span> 100% private — everything happens in your browser. Nothing is uploaded, ever.</p>
+<input type="file" id="importFile" accept="application/json" hidden>
+
+<script>
+(function(){
+  "use strict";
+  var KEY="ledgerline.invoice.v1", THEMEKEY="ledgerline.theme", ACCKEY="ledgerline.accent", CLIENTS="ledgerline.clients.v1";
+  var $=function(s,r){return (r||document).querySelector(s)};
+  var state, saveTimer;
+
+  function seed(){
+    return {
+      docType:"Invoice",
+      fromName:"Studio Northwind", fromInfo:"hello@northwind.studio\n221 Maple Row, Suite 3\nPortland, OR 97204",
+      toName:"Acme Coffee Co.", toInfo:"accounts@acmecoffee.com\n88 Harbor Street\nSeattle, WA 98101",
+      invNo:"INV-1042", currency:"USD",
+      issueDate:new Date().toISOString().slice(0,10),
+      dueDate:new Date(Date.now()+14*864e5).toISOString().slice(0,10),
+      items:[
+        {desc:"Brand identity — logo & guidelines", qty:1, rate:2400},
+        {desc:"Landing page design & build", qty:1, rate:1800},
+        {desc:"Photography art direction (hours)", qty:6, rate:120}
+      ],
+      discount:0, tax:8.5, paid:"",
+      payLink:"", payLabel:"Pay this invoice",
+      notes:"Payment due within 14 days via bank transfer.\nBank: Northwind LLC · Acct 0042 8891 · Routing 026-013.\nThank you for your business!",
+      logo:""
+    };
+  }
+  var CUR={USD:"$",EUR:"€",GBP:"£",IDR:"Rp ",JPY:"¥",AUD:"A$",CAD:"C$",INR:"₹",SGD:"S$",BRL:"R$"};
+  function money(n){
+    var c=state.currency||"USD"; var dec=(c==="JPY"||c==="IDR")?0:2; var v=(isFinite(n)?n:0);
+    try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c,minimumFractionDigits:dec,maximumFractionDigits:dec}).format(v);}
+    catch(e){return (CUR[c]||"")+v.toFixed(dec);}
+  }
+  function fmtDate(s){ if(!s)return "—"; var d=new Date(s+"T00:00:00"); if(isNaN(d))return s;
+    return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); }
+  function esc(s){return (s==null?"":String(s));}
+  function safeUrl(u){ u=String(u||"").trim(); return /^https?:\/\//i.test(u)?u:""; }
+  function calc(){
+    var sub=0; state.items.forEach(function(it){ sub+=(+it.qty||0)*(+it.rate||0); });
+    var disc=sub*(+state.discount||0)/100, taxed=(sub-disc)*(+state.tax||0)/100;
+    return {sub:sub, disc:disc, tax:taxed, total:sub-disc+taxed};
+  }
+
+  function renderItemsEditor(){
+    var box=$("#itemsBox"); box.innerHTML="";
+    state.items.forEach(function(it,i){
+      var row=document.createElement("div"); row.className="item";
+      row.innerHTML='<input type="text" placeholder="Description" aria-label="Description">'
+        +'<input type="number" min="0" step="any" placeholder="1" aria-label="Quantity" class="num">'
+        +'<input type="number" min="0" step="any" placeholder="0" aria-label="Rate" class="num">'
+        +'<button class="del" title="Remove line" aria-label="Remove line">×</button>';
+      var ins=row.querySelectorAll("input");
+      ins[0].value=it.desc; ins[1].value=it.qty; ins[2].value=it.rate;
+      ins[0].addEventListener("input",function(){it.desc=ins[0].value;render();scheduleSave();});
+      ins[1].addEventListener("input",function(){it.qty=ins[1].value;render();scheduleSave();});
+      ins[2].addEventListener("input",function(){it.rate=ins[2].value;render();scheduleSave();});
+      row.querySelector(".del").addEventListener("click",function(){
+        state.items.splice(i,1); if(!state.items.length)state.items.push({desc:"",qty:1,rate:0});
+        renderItemsEditor(); render(); scheduleSave();
+      });
+      box.appendChild(row);
+    });
+  }
+
+  function render(){
+    var dt=state.docType||"Invoice", isInvoice=(dt==="Invoice");
+    $("#pTitle").textContent=dt;
+    $("#pBilledLab").textContent=(dt==="Receipt")?"Received from":"Billed to";
+    $("#pTotalLab").textContent=isInvoice?"Total due":"Total";
+    $("#pDueWrap").hidden=(dt==="Quote"||dt==="Estimate"||dt==="Receipt");
+    $("#pFromName").textContent=state.fromName||"Your business";
+    $("#pFromInfo").textContent=state.fromInfo||"";
+    $("#pToName").innerHTML="<strong>"+esc(state.toName||"Client")+"</strong>";
+    $("#pToInfo").textContent=state.toInfo||"";
+    $("#pInvNo").textContent=state.invNo||"—";
+    $("#pIssue").textContent=fmtDate(state.issueDate);
+    $("#pDue").textContent=fmtDate(state.dueDate);
+    $("#pPaid").hidden=!state.paid;
+    var lg=$("#pLogo"); if(state.logo){lg.src=state.logo;lg.hidden=false;}else lg.hidden=true;
+    var tb=$("#pRows"); tb.innerHTML=""; var any=false;
+    state.items.forEach(function(it){
+      if(!it.desc && !(+it.qty) && !(+it.rate))return; any=true;
+      var amt=(+it.qty||0)*(+it.rate||0), tr=document.createElement("tr");
+      tr.innerHTML='<td class="desc">'+esc(it.desc||"—")+'</td><td class="r num">'+(+it.qty||0)
+        +'</td><td class="r num">'+money(+it.rate||0)+'</td><td class="r num">'+money(amt)+'</td>';
+      tb.appendChild(tr);
+    });
+    if(!any){var tr=document.createElement("tr");tr.innerHTML='<td class="desc empty-hint" colspan="4">Add line items to see them here…</td>';tb.appendChild(tr);}
+    var c=calc(); $("#pSub").textContent=money(c.sub);
+    var dr=$("#pDiscRow"); if(+state.discount>0){dr.hidden=false;$("#pDiscLab").textContent="Discount ("+(+state.discount)+"%)";$("#pDisc").textContent="−"+money(c.disc);}else dr.hidden=true;
+    var txr=$("#pTaxRow"); if(+state.tax>0){txr.hidden=false;$("#pTaxLab").textContent="Tax ("+(+state.tax)+"%)";$("#pTax").textContent=money(c.tax);}else txr.hidden=true;
+    $("#pTotal").textContent=money(c.total);
+    var pu=safeUrl(state.payLink), pw=$("#pPayWrap");
+    if(pu && !state.paid){ pw.hidden=false; var a=$("#pPay"); a.href=pu; a.textContent=(state.payLabel||"Pay this invoice")+" →"; } else pw.hidden=true;
+    var nw=$("#pNotesWrap"); if(state.notes){nw.hidden=false;$("#pNotes").textContent=state.notes;}else nw.hidden=true;
+  }
+
+  /* ---- saved clients ---- */
+  function getClients(){ try{return JSON.parse(localStorage.getItem(CLIENTS))||{};}catch(e){return {};} }
+  function setClients(o){ try{localStorage.setItem(CLIENTS,JSON.stringify(o));}catch(e){} }
+  function refreshClientSel(sel){
+    var box=$("#clientSel"), cl=getClients(); box.innerHTML='<option value="">— saved clients —</option>';
+    Object.keys(cl).sort().forEach(function(name){ var o=document.createElement("option");o.value=name;o.textContent=name;box.appendChild(o); });
+    if(sel)box.value=sel;
+  }
+
+  function bindFields(){
+    document.querySelectorAll("[data-k]").forEach(function(el){
+      var k=el.getAttribute("data-k"), ev=(el.tagName==="SELECT")?"change":"input";
+      el.addEventListener(ev,function(){ state[k]=el.value; render(); scheduleSave(); });
+    });
+    $("#addItem").addEventListener("click",function(){ state.items.push({desc:"",qty:1,rate:0}); renderItemsEditor(); render(); scheduleSave(); });
+    $("#logoInput").addEventListener("change",function(e){
+      var f=e.target.files&&e.target.files[0]; if(!f)return; var r=new FileReader();
+      r.onload=function(){ state.logo=r.result; $("#logoPrev").innerHTML='<img alt="logo" src="'+r.result+'">'; render(); scheduleSave(); };
+      r.readAsDataURL(f);
+    });
+    $("#printBtn").addEventListener("click",function(){window.print();});
+    $("#dupBtn").addEventListener("click",function(){
+      state.invNo=(state.invNo||"INV-0000").replace(/(\d+)(?!.*\d)/,function(m){return String(+m+1).padStart(m.length,"0");});
+      state.paid=""; state.issueDate=new Date().toISOString().slice(0,10);
+      state.dueDate=new Date(Date.now()+14*864e5).toISOString().slice(0,10);
+      hydrate(); scheduleSave(); flash("Duplicated → "+state.invNo);
+    });
+    $("#newBtn").addEventListener("click",function(){
+      if(!confirm("Start a blank invoice? Your current draft will be replaced."))return;
+      state=seed(); state.fromName="";state.fromInfo="";state.toName="";state.toInfo="";
+      state.items=[{desc:"",qty:1,rate:0}]; state.notes="";state.logo="";state.invNo="INV-0001";state.payLink="";
+      hydrate(); scheduleSave();
+    });
+    $("#exportBtn").addEventListener("click",function(){
+      var blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+      var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(state.invNo||"invoice")+".json"; a.click(); URL.revokeObjectURL(a.href);
+    });
+    $("#importBtn").addEventListener("click",function(){$("#importFile").click();});
+    $("#importFile").addEventListener("change",function(e){
+      var f=e.target.files&&e.target.files[0]; if(!f)return; var r=new FileReader();
+      r.onload=function(){ try{var o=JSON.parse(r.result); state=Object.assign(seed(),o);
+        if(!Array.isArray(state.items)||!state.items.length)state.items=[{desc:"",qty:1,rate:0}];
+        hydrate(); scheduleSave(); }catch(err){ alert("That file isn't a valid Ledgerline invoice."); } };
+      r.readAsText(f);
+    });
+    $("#themeBtn").addEventListener("click",toggleTheme);
+    // accent swatches
+    $("#swatches").addEventListener("click",function(e){
+      var b=e.target.closest(".sw"); if(!b)return;
+      var a=b.getAttribute("data-accent");
+      if(a)document.documentElement.setAttribute("data-accent",a); else document.documentElement.removeAttribute("data-accent");
+      try{localStorage.setItem(ACCKEY,a);}catch(_){} markSwatch();
+    });
+    // saved clients
+    $("#clientSave").addEventListener("click",function(){
+      var name=(state.toName||"").trim()||prompt("Save client as:"); if(!name)return;
+      var cl=getClients(); cl[name]={toName:state.toName,toInfo:state.toInfo}; setClients(cl); refreshClientSel(name); flash("Client saved");
+    });
+    $("#clientDel").addEventListener("click",function(){
+      var name=$("#clientSel").value; if(!name)return; var cl=getClients(); delete cl[name]; setClients(cl); refreshClientSel(); flash("Client removed");
+    });
+    $("#clientSel").addEventListener("change",function(){
+      var cl=getClients(), c=cl[$("#clientSel").value]; if(!c)return;
+      state.toName=c.toName||""; state.toInfo=c.toInfo||"";
+      $("#toName").value=state.toName; $("#toInfo").value=state.toInfo; render(); scheduleSave();
+    });
+  }
+
+  function markSwatch(){
+    var cur=document.documentElement.getAttribute("data-accent")||"";
+    document.querySelectorAll(".sw").forEach(function(b){ b.setAttribute("aria-pressed", (b.getAttribute("data-accent")||"")===cur ? "true":"false"); });
+  }
+  function hydrate(){
+    document.querySelectorAll("[data-k]").forEach(function(el){ var k=el.getAttribute("data-k"); if(state[k]!=null)el.value=state[k]; });
+    var p=$("#logoPrev"); if(state.logo)p.innerHTML='<img alt="logo" src="'+state.logo+'">'; else p.textContent="Logo";
+    renderItemsEditor(); render();
+  }
+  function flash(msg){ var t=$("#savedTag"); t.textContent=msg; setTimeout(function(){t.textContent="";},1600); }
+  function scheduleSave(){
+    var tag=$("#savedTag"); tag.textContent="Saving…"; clearTimeout(saveTimer);
+    saveTimer=setTimeout(function(){ try{ localStorage.setItem(KEY,JSON.stringify(state)); tag.textContent="Saved ✓"; setTimeout(function(){tag.textContent="";},1200);}catch(e){tag.textContent="";} },450);
+  }
+  function toggleTheme(){
+    var cur=document.documentElement.getAttribute("data-theme");
+    if(!cur)cur=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";
+    var next=cur==="dark"?"light":"dark"; document.documentElement.setAttribute("data-theme",next);
+    try{localStorage.setItem(THEMEKEY,next);}catch(e){}
+  }
+
+  try{var t=localStorage.getItem(THEMEKEY); if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}
+  try{var a=localStorage.getItem(ACCKEY); if(a)document.documentElement.setAttribute("data-accent",a);}catch(e){}
+  try{var saved=localStorage.getItem(KEY); state=saved?Object.assign(seed(),JSON.parse(saved)):seed();}catch(e){state=seed();}
+  if(!Array.isArray(state.items)||!state.items.length)state.items=[{desc:"",qty:1,rate:0}];
+  bindFields(); refreshClientSel(); markSwatch(); hydrate();
+})();
+</script>
+
+</body>
+</html>

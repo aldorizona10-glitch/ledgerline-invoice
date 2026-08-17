@@ -1,0 +1,8 @@
+# private business notes — never publish pricing/monetization strategy
+MONETIZATION.md
+
+# cruft
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
