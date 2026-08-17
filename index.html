@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ledgerline — Invoice Studio</title>
-<meta name="description" content="Privacy-first invoice generator. Templates, saved clients, a pay button, and PDF export — all in your browser. Nothing is uploaded.">
+<title>Ledgerline, Invoice Studio</title>
+<meta name="description" content="Privacy-first invoice generator. Templates, saved clients, a pay button, and PDF export, all in your browser. Nothing is uploaded.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 </head>
 <body>
@@ -17,6 +17,8 @@
     --accent-weak:color-mix(in srgb,var(--accent) 12%,var(--surface));
     --shadow:0 1px 2px rgba(16,32,26,.04),0 8px 30px rgba(16,32,26,.07);
     --radius:14px; --radius-sm:9px;
+    --ease-out:cubic-bezier(.23,1,.32,1);
+    --dur-press:140ms; --dur-hover:180ms;
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
@@ -187,6 +189,49 @@
     .paidtag{color:#000;border-color:#000}
     .paybtn{background:#fff;color:#000;border:1.5px solid #000}
   }
+
+  /* ---- interaction layer ----
+     Only transform and opacity animate, so everything stays on the compositor.
+     Durations sit under 200ms: UI feedback should feel instant, not narrated. */
+  button, .sw, .ghost, .mini, .primary, .del, .add, .paybtn, .chip {
+    transition:
+      background-color var(--dur-hover) ease,
+      border-color var(--dur-hover) ease,
+      color var(--dur-hover) ease,
+      transform var(--dur-press) var(--ease-out);
+  }
+  /* Press feedback: the interface confirms it heard the click. */
+  button:active, .sw:active, .ghost:active, .mini:active,
+  .primary:active, .del:active, .add:active, .paybtn:active {
+    transform: scale(.97);
+  }
+  input, select, textarea {
+    transition:
+      border-color var(--dur-hover) ease,
+      background-color var(--dur-hover) ease;
+  }
+  /* A visible, consistent focus ring for keyboard users on every control. */
+  button:focus-visible, a:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  /* Touch devices fire :hover on tap and leave it stuck, so gate hover-only
+     affordances behind a real pointer. */
+  @media (hover: hover) and (pointer: fine) {
+    button:hover, .sw:hover, .ghost:hover, .mini:hover, .add:hover {
+      border-color: var(--line-strong);
+    }
+    .primary:hover, .paybtn:hover { filter: brightness(1.06); }
+    .del:hover { color: #C0392B; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button, .sw, .ghost, .mini, .primary, .del, .add, .paybtn, .chip,
+    input, select, textarea { transition: none; }
+    button:active, .sw:active, .ghost:active, .mini:active,
+    .primary:active, .del:active, .add:active, .paybtn:active { transform: none; }
+  }
 </style>
 
 <div class="app">
@@ -215,7 +260,7 @@
           <div class="field" style="flex:1">
             <label class="lab" for="logoInput">Logo (optional)</label>
             <input type="file" id="logoInput" accept="image/*">
-            <span class="hint">Stays in your browser — never uploaded.</span>
+            <span class="hint">Stays in your browser, never uploaded.</span>
           </div>
         </div>
         <div class="field"><label class="lab" for="fromName">Business name</label>
@@ -229,7 +274,7 @@
         <div class="field">
           <label class="lab" for="clientSel">Saved clients</label>
           <div class="inline">
-            <select id="clientSel"><option value="">— none —</option></select>
+            <select id="clientSel"><option value="">- none -</option></select>
             <button class="mini" id="clientSave" title="Save current client">Save</button>
             <button class="mini" id="clientDel" title="Delete selected client">Del</button>
           </div>
@@ -291,7 +336,7 @@
         <legend class="eyebrow">Payment button (optional)</legend>
         <div class="field"><label class="lab" for="payLink">Payment link</label>
           <input type="url" id="payLink" data-k="payLink" placeholder="Stripe / PayPal.me / bank link">
-          <span class="hint">Paste any payment URL — it becomes a clickable button on the invoice.</span></div>
+          <span class="hint">Paste any payment URL and it becomes a clickable button on the invoice.</span></div>
         <div class="field"><label class="lab" for="payLabel">Button label</label>
           <input type="text" id="payLabel" data-k="payLabel" placeholder="Pay this invoice"></div>
       </fieldset>
@@ -366,7 +411,7 @@
     </section>
   </div>
 </div>
-<p class="privacy no-print"><span class="dot"></span> 100% private — everything happens in your browser. Nothing is uploaded, ever.</p>
+<p class="privacy no-print"><span class="dot"></span> 100% private. Everything happens in your browser. Nothing is uploaded, ever.</p>
 <input type="file" id="importFile" accept="application/json" hidden>
 
 <script>
@@ -385,7 +430,7 @@
       issueDate:new Date().toISOString().slice(0,10),
       dueDate:new Date(Date.now()+14*864e5).toISOString().slice(0,10),
       items:[
-        {desc:"Brand identity — logo & guidelines", qty:1, rate:2400},
+        {desc:"Brand identity, logo & guidelines", qty:1, rate:2400},
         {desc:"Landing page design & build", qty:1, rate:1800},
         {desc:"Photography art direction (hours)", qty:6, rate:120}
       ],
@@ -401,7 +446,7 @@
     try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c,minimumFractionDigits:dec,maximumFractionDigits:dec}).format(v);}
     catch(e){return (CUR[c]||"")+v.toFixed(dec);}
   }
-  function fmtDate(s){ if(!s)return "—"; var d=new Date(s+"T00:00:00"); if(isNaN(d))return s;
+  function fmtDate(s){ if(!s)return "-"; var d=new Date(s+"T00:00:00"); if(isNaN(d))return s;
     return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); }
   function esc(s){return (s==null?"":String(s));}
   function safeUrl(u){ u=String(u||"").trim(); return /^https?:\/\//i.test(u)?u:""; }
@@ -442,7 +487,7 @@
     $("#pFromInfo").textContent=state.fromInfo||"";
     $("#pToName").innerHTML="<strong>"+esc(state.toName||"Client")+"</strong>";
     $("#pToInfo").textContent=state.toInfo||"";
-    $("#pInvNo").textContent=state.invNo||"—";
+    $("#pInvNo").textContent=state.invNo||"-";
     $("#pIssue").textContent=fmtDate(state.issueDate);
     $("#pDue").textContent=fmtDate(state.dueDate);
     $("#pPaid").hidden=!state.paid;
@@ -451,7 +496,7 @@
     state.items.forEach(function(it){
       if(!it.desc && !(+it.qty) && !(+it.rate))return; any=true;
       var amt=(+it.qty||0)*(+it.rate||0), tr=document.createElement("tr");
-      tr.innerHTML='<td class="desc">'+esc(it.desc||"—")+'</td><td class="r num">'+(+it.qty||0)
+      tr.innerHTML='<td class="desc">'+esc(it.desc||"-")+'</td><td class="r num">'+(+it.qty||0)
         +'</td><td class="r num">'+money(+it.rate||0)+'</td><td class="r num">'+money(amt)+'</td>';
       tb.appendChild(tr);
     });
@@ -469,7 +514,7 @@
   function getClients(){ try{return JSON.parse(localStorage.getItem(CLIENTS))||{};}catch(e){return {};} }
   function setClients(o){ try{localStorage.setItem(CLIENTS,JSON.stringify(o));}catch(e){} }
   function refreshClientSel(sel){
-    var box=$("#clientSel"), cl=getClients(); box.innerHTML='<option value="">— saved clients —</option>';
+    var box=$("#clientSel"), cl=getClients(); box.innerHTML='<option value="">- saved clients -</option>';
     Object.keys(cl).sort().forEach(function(name){ var o=document.createElement("option");o.value=name;o.textContent=name;box.appendChild(o); });
     if(sel)box.value=sel;
   }
