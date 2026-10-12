@@ -47,3 +47,4 @@ Vanilla HTML/CSS/JS. No frameworks, no dependencies, no network calls. Data pers
 ## License
 
 [MIT](LICENSE) — do anything you like, including selling it.
+
